@@ -6,9 +6,9 @@ export default function Hero() {
           <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260317_100335_dc625816-c3c1-4b00-b93e-4cb301cf5ea5.mp4" type="video/mp4"/>
         </video>
         <div className="absolute inset-0" style={{ background: 'var(--theme-overlay)' }}></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent"></div>
+        <div className="absolute inset-0 bg-linear-to-t from-background via-background/40 to-transparent"></div>
       </div>
-      <div className="relative z-10 max-w-5xl px-6 text-center">
+      <div className="relative z-10 max-w-5xl px-6 text-center mt-32 md:mt-40">
         <h1 
           className="font-headline text-7xl md:text-[10rem] tracking-[-0.04em] leading-[0.9] animate-blur-text italic transition-colors duration-400" 
           style={{ animationDelay: '0.1s', color: 'var(--theme-text-heading)' }}

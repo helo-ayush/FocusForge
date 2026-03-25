@@ -249,10 +249,128 @@ const gradeQuiz = async (req, res) => {
     }
 };
 
+/**
+ * Express Handler: Creates a new course for a user.
+ * POST /api/course/create
+ * Body: { clerkId, userName, llmCurriculum }
+ */
+const createCourseHandler = async (req, res) => {
+    try {
+        const { clerkId, userName, llmCurriculum } = req.body;
+
+        if (!clerkId || !llmCurriculum) {
+            return res.status(400).json({ success: false, message: "clerkId and llmCurriculum are required" });
+        }
+
+        // Find or create the user by clerkId
+        let user = await User.findOne({ clerkId });
+        if (!user) {
+            user = await User.create({ clerkId, name: userName || 'Learner' });
+        }
+
+        const savedCourse = await initializeCourse(user._id, llmCurriculum);
+
+        return res.json({ success: true, course: savedCourse });
+    } catch (error) {
+        console.error("Error in createCourseHandler:", error);
+        res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+    }
+};
+
+/**
+ * Express Handler: Fetches all courses for a user with computed progress.
+ * GET /api/course/user/:clerkId
+ */
+const getUserCourses = async (req, res) => {
+    try {
+        const { clerkId } = req.params;
+
+        const user = await User.findOne({ clerkId });
+        if (!user) {
+            return res.json({ success: true, courses: [], stats: { totalCourses: 0, completedSubtopics: 0, totalSubtopics: 0 } });
+        }
+
+        const courses = await Course.find({ userId: user._id }).sort({ updatedAt: -1 });
+
+        let totalCompletedSubtopics = 0;
+        let totalSubtopicsAll = 0;
+
+        const coursesWithProgress = courses.map(course => {
+            const courseObj = course.toObject();
+            let completedCount = 0;
+            let totalCount = 0;
+
+            courseObj.modules.forEach(mod => {
+                mod.subtopics.forEach(sub => {
+                    totalCount++;
+                    if (sub.status === 'completed') completedCount++;
+                });
+            });
+
+            totalCompletedSubtopics += completedCount;
+            totalSubtopicsAll += totalCount;
+
+            courseObj.progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+            courseObj.completedSubtopics = completedCount;
+            courseObj.totalSubtopics = totalCount;
+            courseObj.totalModules = courseObj.modules.length;
+
+            return courseObj;
+        });
+
+        return res.json({
+            success: true,
+            courses: coursesWithProgress,
+            stats: {
+                totalCourses: courses.length,
+                completedSubtopics: totalCompletedSubtopics,
+                totalSubtopics: totalSubtopicsAll
+            }
+        });
+    } catch (error) {
+        console.error("Error in getUserCourses:", error);
+        res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+    }
+};
+
+/**
+ * Express Handler: Fetches a single course by its ID.
+ * GET /api/course/:courseId
+ */
+const getCourseById = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        const course = await Course.findById(courseId);
+
+        if (!course) {
+            return res.status(404).json({ success: false, message: "Course not found" });
+        }
+
+        const courseObj = course.toObject();
+        let completedCount = 0;
+        let totalCount = 0;
+        courseObj.modules.forEach(mod => {
+            mod.subtopics.forEach(sub => {
+                totalCount++;
+                if (sub.status === 'completed') completedCount++;
+            });
+        });
+        courseObj.progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+        return res.json({ success: true, course: courseObj });
+    } catch (error) {
+        console.error("Error in getCourseById:", error);
+        res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+    }
+};
+
 module.exports = {
     initializeCourse,
     updateTrustedCreators,
     markSubtopicCompleteAndUnlockNext,
     generateAndSaveQuiz,
-    gradeQuiz
+    gradeQuiz,
+    createCourseHandler,
+    getUserCourses,
+    getCourseById
 };
